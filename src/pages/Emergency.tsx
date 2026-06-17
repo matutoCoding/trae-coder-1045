@@ -30,7 +30,7 @@ export default function Emergency() {
   const [showNewEventModal, setShowNewEventModal] = useState(false);
   const [dispatchBoatId, setDispatchBoatId] = useState<string | null>(null);
   const [destination, setDestination] = useState('东港码头');
-  const [newEventType, setNewEventType] = useState('water_shortage');
+  const [newEventType, setNewEventType] = useState<'water_shortage' | 'pipe_break' | 'equipment_failure' | 'water_quality'>('water_shortage');
   const [newEventLevel, setNewEventLevel] = useState<'minor' | 'major' | 'critical'>('minor');
   const [newEventLocation, setNewEventLocation] = useState('');
   const [newEventDescription, setNewEventDescription] = useState('');
@@ -81,8 +81,11 @@ export default function Emergency() {
     const eta = new Date();
     eta.setHours(eta.getHours() + 6);
     
+    const originPort = boat.currentLocation;
+    
     updateWaterBoat(boatId, {
       status: 'sailing',
+      currentLocation: `从${originPort}出发`,
       destination: destination || '东港码头',
       eta: eta.toISOString(),
     });
@@ -109,6 +112,10 @@ export default function Emergency() {
       startTime: new Date().toISOString(),
     });
 
+    resetNewEventForm();
+  };
+
+  const resetNewEventForm = () => {
     setShowNewEventModal(false);
     setNewEventType('water_shortage');
     setNewEventLevel('minor');
@@ -765,7 +772,7 @@ export default function Emergency() {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">上报应急事件</h2>
               <button
-                onClick={() => setShowNewEventModal(false)}
+                onClick={resetNewEventForm}
                 className="text-slate-400 hover:text-white p-2 hover:bg-slate-700/50 rounded-lg transition-colors"
               >
                 ✕
@@ -779,7 +786,7 @@ export default function Emergency() {
                   {Object.entries(typeIcons).map(([type, Icon]) => (
                     <button
                       key={type}
-                      onClick={() => setNewEventType(type)}
+                      onClick={() => setNewEventType(type as 'water_shortage' | 'pipe_break' | 'equipment_failure' | 'water_quality')}
                       className={cn(
                         'p-3 rounded-lg border transition-all text-left',
                         newEventType === type
@@ -849,7 +856,7 @@ export default function Emergency() {
 
             <div className="flex gap-3 mt-6 pt-4 border-t border-slate-700/30">
               <button
-                onClick={() => setShowNewEventModal(false)}
+                onClick={resetNewEventForm}
                 className="btn-secondary flex-1"
               >
                 取消

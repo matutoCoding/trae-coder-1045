@@ -23,6 +23,10 @@ export default function Dashboard() {
   const unreadAlerts = alerts.filter((a) => !a.read);
   const unreadCount = unreadAlerts.length;
 
+  const activeEvents = emergencyEvents.filter((e) => e.status !== 'resolved');
+  const pendingEvents = emergencyEvents.filter((e) => e.status === 'pending');
+  const processingEvents = emergencyEvents.filter((e) => e.status === 'processing');
+
   const totalStorage = waterSources
     .filter(s => s.type === 'reservoir')
     .reduce((sum, s) => sum + s.currentVolume, 0);
@@ -331,37 +335,45 @@ export default function Dashboard() {
         <div className="glass-card p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="section-title">应急事件</h3>
-            <span className="text-xs text-slate-400">
-              进行中 {activeEvents.length} 件
-            </span>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="text-amber-400">待处理 {pendingEvents.length}</span>
+              <span className="text-sky-400">进行中 {processingEvents.length}</span>
+            </div>
           </div>
           <div className="space-y-3 max-h-72 overflow-y-auto">
-            {activeEvents.slice(0, 4).map((event) => (
-              <div
-                key={event.id}
-                className="p-3 rounded-lg bg-slate-800/30 border border-slate-700/30 hover:border-ocean-500/30 transition-colors cursor-pointer"
-              >
-                <div className="flex items-start gap-3">
-                  <div
-                    className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 status-pulse ${levelColors[event.level]}`}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-slate-200 truncate">
-                        {getEventTypeText(event.type)}
+            {activeEvents.length > 0 ? (
+              activeEvents.slice(0, 4).map((event) => (
+                <div
+                  key={event.id}
+                  className="p-3 rounded-lg bg-slate-800/30 border border-slate-700/30 hover:border-ocean-500/30 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 status-pulse ${levelColors[event.level]}`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-slate-200 truncate">
+                          {getEventTypeText(event.type)}
+                        </p>
+                        <StatusBadge status={event.status} />
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                        {event.description}
                       </p>
-                      <StatusBadge status={event.status} />
+                      <p className="text-xs text-slate-600 mt-2">
+                        {getRelativeTime(event.startTime)}
+                      </p>
                     </div>
-                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-                      {event.description}
-                    </p>
-                    <p className="text-xs text-slate-600 mt-2">
-                      {getRelativeTime(event.startTime)}
-                    </p>
                   </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-slate-500">
+                <AlertTriangle className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">暂无活动应急事件</p>
               </div>
-            ))}
+            )}
           </div>
           <button className="w-full mt-4 py-2 text-sm text-ocean-400 hover:text-ocean-300 flex items-center justify-center gap-1">
             查看全部 <ArrowRight className="w-4 h-4" />
@@ -399,6 +411,9 @@ export default function Dashboard() {
                     <div>
                       <p className="text-sm font-medium text-slate-200">{boat.name}</p>
                       <p className="text-xs text-slate-500">{boat.currentLocation}</p>
+                      {boat.status === 'sailing' && boat.destination && (
+                        <p className="text-xs text-sky-400 mt-0.5">前往: {boat.destination}</p>
+                      )}
                     </div>
                   </div>
                   <span className={`text-xs font-medium ${boatStatusColors[boat.status]}`}>
