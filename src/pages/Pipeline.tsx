@@ -25,6 +25,10 @@ export default function Pipeline() {
   const lowCount = pressurePoints.filter((p) => p.status === 'low').length;
   const highCount = pressurePoints.filter((p) => p.status === 'high').length;
   const totalFlow = pressurePoints.reduce((sum, p) => sum + p.flowRate, 0);
+  const avgPressure = pressurePoints.length > 0
+    ? (pressurePoints.reduce((sum, p) => sum + p.pressure, 0) / pressurePoints.length)
+    : 0;
+  const avgPressureStatus = avgPressure < 0.3 ? 'low' : avgPressure > 0.5 ? 'high' : 'normal';
 
   const selectedPointData = pressurePoints.find((p) => p.id === selectedPoint);
 
@@ -216,19 +220,36 @@ export default function Pipeline() {
             <div>
               <p className="text-sm text-slate-400">平均压力</p>
               <p className="text-2xl font-bold text-white mt-2 data-value">
-                {pressurePoints.reduce((s, p) => s + p.pressure, 0) / pressurePoints.length? 0.42 : 0}
+                {avgPressure.toFixed(2)}
                 <span className="text-sm font-normal text-slate-400 ml-1">MPa</span>
               </p>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center">
+            <div className={cn(
+              'w-12 h-12 rounded-xl flex items-center justify-center',
+              avgPressureStatus === 'normal' ? 'bg-gradient-to-br from-cyan-500 to-teal-500' :
+              avgPressureStatus === 'low' ? 'bg-gradient-to-br from-orange-500 to-amber-500' :
+              'bg-gradient-to-br from-red-500 to-rose-500'
+            )}>
               <Activity className="w-6 h-6 text-white" />
             </div>
           </div>
           <div className="mt-4 flex items-center gap-2 text-sm">
-            <span className="text-emerald-400 flex items-center gap-1">
-              <TrendingUp className="w-4 h-4" />
-              正常范围
-            </span>
+            {avgPressureStatus === 'normal' ? (
+              <span className="text-emerald-400 flex items-center gap-1">
+                <TrendingUp className="w-4 h-4" />
+                正常范围
+              </span>
+            ) : avgPressureStatus === 'low' ? (
+              <span className="text-orange-400 flex items-center gap-1">
+                <TrendingDown className="w-4 h-4" />
+                压力偏低
+              </span>
+            ) : (
+              <span className="text-red-400 flex items-center gap-1">
+                <TrendingUp className="w-4 h-4" />
+                压力偏高
+              </span>
+            )}
           </div>
         </div>
 

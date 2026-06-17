@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import {
   Droplets,
@@ -19,9 +18,10 @@ import { formatNumber, formatVolume, getRelativeTime, getEventTypeText, cn } fro
 import { supplyStatistics, monthlyConsumption, desalinationHistory } from '@/data/mockData';
 
 export default function Dashboard() {
-  const { emergencyEvents, waterSources, waterBoats, alerts, equipment } = useAppStore();
-  const [activeEvents, setActiveEvents] = useState(emergencyEvents.filter(e => e.status !== 'resolved'));
-  const [alarmCount, setAlarmCount] = useState(alerts.filter(a => !a.read).length);
+  const { emergencyEvents, waterSources, waterBoats, alerts, equipment, markAlertAsRead, markAllAlertsAsRead } = useAppStore();
+
+  const unreadAlerts = alerts.filter((a) => !a.read);
+  const unreadCount = unreadAlerts.length;
 
   const totalStorage = waterSources
     .filter(s => s.type === 'reservoir')
@@ -517,17 +517,28 @@ export default function Dashboard() {
         <div className="glass-card p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="section-title">最新告警</h3>
-            <span className="text-xs text-red-400">{alarmCount} 条未读</span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-red-400">{unreadCount} 条未读</span>
+              {unreadCount > 0 && (
+                <button
+                  onClick={markAllAlertsAsRead}
+                  className="text-xs text-ocean-400 hover:text-ocean-300"
+                >
+                  全部已读
+                </button>
+              )}
+            </div>
           </div>
           <div className="space-y-3">
             {alerts.slice(0, 5).map((alert) => (
               <div
                 key={alert.id}
+                onClick={() => !alert.read && markAlertAsRead(alert.id)}
                 className={cn(
                   'p-3 rounded-lg border transition-colors cursor-pointer',
                   !alert.read
                     ? 'bg-ocean-500/5 border-ocean-500/20'
-                    : 'bg-slate-800/30 border-slate-700/30'
+                    : 'bg-slate-800/30 border-slate-700/30 hover:bg-slate-800/50'
                 )}
               >
                 <div className="flex items-start gap-3">

@@ -24,10 +24,16 @@ import { formatDateTime, getRelativeTime, getEventTypeText, cn } from '@/utils/f
 import type { EmergencyEvent, WaterBoat } from '@/types';
 
 export default function Emergency() {
-  const { emergencyEvents, waterBoats, updateEmergencyEvent, addEmergencyEvent } = useAppStore();
+  const { emergencyEvents, waterBoats, updateEmergencyEvent, addEmergencyEvent, updateWaterBoat } = useAppStore();
   const [activeTab, setActiveTab] = useState<'events' | 'boats' | 'plans'>('events');
   const [selectedEvent, setSelectedEvent] = useState<EmergencyEvent | null>(null);
   const [showNewEventModal, setShowNewEventModal] = useState(false);
+  const [dispatchBoatId, setDispatchBoatId] = useState<string | null>(null);
+  const [destination, setDestination] = useState('东港码头');
+  const [newEventType, setNewEventType] = useState('water_shortage');
+  const [newEventLevel, setNewEventLevel] = useState<'minor' | 'major' | 'critical'>('minor');
+  const [newEventLocation, setNewEventLocation] = useState('');
+  const [newEventDescription, setNewEventDescription] = useState('');
 
   const pendingEvents = emergencyEvents.filter((e) => e.status === 'pending');
   const processingEvents = emergencyEvents.filter((e) => e.status === 'processing');
@@ -69,8 +75,45 @@ export default function Emergency() {
   };
 
   const handleDispatchBoat = (boatId: string) => {
-    // 模拟调度船只
-    console.log('调度船只:', boatId);
+    const boat = waterBoats.find((b) => b.id === boatId);
+    if (!boat) return;
+    
+    const eta = new Date();
+    eta.setHours(eta.getHours() + 6);
+    
+    updateWaterBoat(boatId, {
+      status: 'sailing',
+      destination: destination || '东港码头',
+      eta: eta.toISOString(),
+    });
+    setDispatchBoatId(null);
+    setDestination('东港码头');
+  };
+
+  const handleSubmitEvent = () => {
+    if (!newEventLocation.trim()) {
+      alert('请输入事件发生位置');
+      return;
+    }
+    if (!newEventDescription.trim()) {
+      alert('请输入事件描述');
+      return;
+    }
+
+    addEmergencyEvent({
+      type: newEventType,
+      level: newEventLevel,
+      location: newEventLocation,
+      description: newEventDescription,
+      status: 'pending',
+      startTime: new Date().toISOString(),
+    });
+
+    setShowNewEventModal(false);
+    setNewEventType('water_shortage');
+    setNewEventLevel('minor');
+    setNewEventLocation('');
+    setNewEventDescription('');
   };
 
   return (
@@ -559,7 +602,10 @@ export default function Emergency() {
                 <div className="mt-4 pt-3 border-t border-slate-700/30 flex gap-2">
                   {boat.status === 'docked' && (
                     <button
-                      onClick={() => handleDispatchBoat(boat.id)}
+                      onClick={() => {
+                        setDispatchBoatId(boat.id);
+                        setDestination('东港码头');
+                      }}
                       className="flex-1 py-2 text-xs rounded-lg bg-sky-500/20 text-sky-400 hover:bg-sky-500/30"
                     >
                       调度派遣
@@ -733,10 +779,22 @@ export default function Emergency() {
                   {Object.entries(typeIcons).map(([type, Icon]) => (
                     <button
                       key={type}
-                      className="p-3 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:border-ocean-500/50 transition-all text-left"
+                      onClick={() => setNewEventType(type)}
+                      className={cn(
+                        'p-3 rounded-lg border transition-all text-left',
+                        newEventType === type
+                          ? 'bg-ocean-500/20 border-ocean-500/50'
+                          : 'bg-slate-800/50 border-slate-700/50 hover:border-ocean-500/50'
+                      )}
                     >
-                      <Icon className="w-5 h-5 text-ocean-400 mb-1" />
-                      <p className="text-sm text-white">{getEventTypeText(type)}</p>
+                      <Icon className={cn(
+                        'w-5 h-5 mb-1',
+                        newEventType === type ? 'text-ocean-400' : 'text-slate-400'
+                      )} />
+                      <p className={cn(
+                        'text-sm',
+                        newEventType === type ? 'text-white' : 'text-slate-300'
+                      )}>{getEventTypeText(type)}</p>
                     </button>
                   ))}
                 </div>
@@ -748,13 +806,16 @@ export default function Emergency() {
                   {Object.entries(levelLabels).map(([level, label]) => (
                     <button
                       key={level}
+                      onClick={() => setNewEventLevel(level as 'minor' | 'major' | 'critical')}
                       className={cn(
                         'flex-1 py-2 rounded-lg text-sm border transition-all',
-                        level === 'critical'
-                          ? 'bg-red-500/20 text-red-400 border-red-500/30'
-                          : level === 'major'
-                          ? 'bg-orange-500/20 text-orange-400 border-orange-500/30'
-                          : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                        newEventLevel === level
+                          ? level === 'critical'
+                            ? 'bg-red-500/30 text-red-400 border-red-500/50'
+                            : level === 'major'
+                            ? 'bg-orange-500/30 text-orange-400 border-orange-500/50'
+                            : 'bg-amber-500/30 text-amber-400 border-amber-500/50'
+                          : 'bg-slate-800/30 text-slate-400 border-slate-700/30 hover:border-slate-600/50'
                       )}
                     >
                       {label}
@@ -767,6 +828,8 @@ export default function Emergency() {
                 <label className="block text-sm text-slate-400 mb-2">发生位置</label>
                 <input
                   type="text"
+                  value={newEventLocation}
+                  onChange={(e) => setNewEventLocation(e.target.value)}
                   placeholder="请输入事件发生位置"
                   className="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-ocean-500/50"
                 />
@@ -776,6 +839,8 @@ export default function Emergency() {
                 <label className="block text-sm text-slate-400 mb-2">事件描述</label>
                 <textarea
                   rows={3}
+                  value={newEventDescription}
+                  onChange={(e) => setNewEventDescription(e.target.value)}
                   placeholder="请详细描述事件情况..."
                   className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-ocean-500/50 resize-none"
                 />
@@ -790,10 +855,74 @@ export default function Emergency() {
                 取消
               </button>
               <button
-                onClick={() => setShowNewEventModal(false)}
+                onClick={handleSubmitEvent}
                 className="btn-primary flex-1"
               >
                 提交上报
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {dispatchBoatId && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-card w-full max-w-md p-6 animate-slide-up">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">调度运水船</h2>
+              <button
+                onClick={() => setDispatchBoatId(null)}
+                className="text-slate-400 hover:text-white p-2 hover:bg-slate-700/50 rounded-lg transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">目的港</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['东港码头', '西港码头', '南岛码头', '北村码头'].map((port) => (
+                    <button
+                      key={port}
+                      onClick={() => setDestination(port)}
+                      className={cn(
+                        'p-3 rounded-lg text-sm text-left transition-all border',
+                        destination === port
+                          ? 'bg-ocean-500/20 border-ocean-500/50 text-ocean-400'
+                          : 'bg-slate-800/50 border-slate-700/50 text-slate-300 hover:border-ocean-500/30'
+                      )}
+                    >
+                      <Anchor className="w-4 h-4 mb-1" />
+                      {port}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-4 rounded-lg bg-slate-800/30 border border-slate-700/30">
+                <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+                  <Ship className="w-4 h-4 text-sky-400" />
+                  <span>{waterBoats.find((b) => b.id === dispatchBoatId)?.name}</span>
+                </div>
+                <div className="text-xs text-slate-500">
+                  预计航行时间约6小时，载水量{waterBoats.find((b) => b.id === dispatchBoatId)?.capacity}吨
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6 pt-4 border-t border-slate-700/30">
+              <button
+                onClick={() => setDispatchBoatId(null)}
+                className="btn-secondary flex-1"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => handleDispatchBoat(dispatchBoatId)}
+                className="btn-primary flex-1"
+              >
+                确认调度
               </button>
             </div>
           </div>
